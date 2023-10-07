@@ -1,12 +1,19 @@
+/* eslint-disable no-restricted-syntax */
 const DetailComment = require('../../Domains/comments/entities/DetailComment');
 const DetailReply = require('../../Domains/replies/entities/DetailReply');
 const DetailThread = require('../../Domains/threads/entities/DetailThread');
 
 class GetDetailThreadUseCase {
-  constructor({ commentRepository, threadRepository, replyRepository }) {
+  constructor({
+    commentRepository,
+    threadRepository,
+    replyRepository,
+    likeRepository,
+  }) {
     this._commentRepository = commentRepository;
     this._threadRepository = threadRepository;
     this._replyRepository = replyRepository;
+    this._likeRepository = likeRepository;
   }
 
   async execute(useCasePayload) {
@@ -43,7 +50,7 @@ class GetDetailThreadUseCase {
       return combined;
     }
 
-    filterComments.comments.forEach((comment) => {
+    for await (const comment of filterComments.comments) {
       const combinedComment = combineCommentsAndReplies(
         comment,
         replyCommentThread
@@ -51,8 +58,11 @@ class GetDetailThreadUseCase {
       if (!combinedComment.replies) {
         combinedComment.replies = [];
       }
+      combinedComment.likeCount = await this._likeRepository.getLikeComment(
+        comment.id
+      );
       result.push(combinedComment);
-    });
+    }
 
     return {
       thread: { ...detailThread, comments: result },
